@@ -10,6 +10,10 @@ import (
 type CategoryHandler struct {
 }
 
+type GetCategoryByCategoryV1Param struct {
+	Category string `uri:"category" binding:"oneof=php python golang"`
+}
+
 var validCategory = map[string]bool{
 	"php":    true,
 	"python": true,
@@ -21,15 +25,25 @@ func NewCategoryHandler() *CategoryHandler {
 }
 
 func (c *CategoryHandler) GetCategoryByCategoryV1(ctx *gin.Context) {
-	category := ctx.Param("category")
-
-	if err := utils.ValidationInList("Category", category, validCategory); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	var params GetCategoryByCategoryV1Param
+	if err := ctx.ShouldBindUri(&params); err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.HandleValidationError(err))
 		return
 	}
 
 	ctx.JSON(http.StatusOK, gin.H{
 		"message":  "Category found",
-		"category": category,
+		"category": params.Category,
 	})
+	// category := ctx.Param("category")
+
+	// if err := utils.ValidationInList("Category", category, validCategory); err != nil {
+	// 	ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	// 	return
+	// }
+
+	// ctx.JSON(http.StatusOK, gin.H{
+	// 	"message":  "Category found",
+	// 	"category": category,
+	// })
 }

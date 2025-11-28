@@ -3,12 +3,24 @@ package v1handler
 import (
 	"net/http"
 	"regexp"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"mamba.com/route-group/utils"
 )
 
 type ProductHandler struct {
+}
+
+type GetProductsBySlugV1Param struct {
+	Slug string `uri:"slug" binding:"slug,min=3,max=5"`
+}
+
+type GetProductsV1Param struct {
+	Search string `form:"search" binding:"required,min=3,max=50,search"`
+	Limit  int    `form:"limit" binding:"omitempty,gte=1,lte=100"`
+	Email  string `form:"email" binding:"omitempty,email"`
+	Date   string `form:"date" binding:"omitempty,datetime=2006-01-02"`
 }
 
 var (
@@ -23,25 +35,62 @@ func NewProductHandler() *ProductHandler {
 // Product API
 
 func (p *ProductHandler) GetProductsV1(ctx *gin.Context) {
-	limit := ctx.DefaultQuery("limit", "10")
+	var params GetProductsV1Param
+	if err := ctx.ShouldBindQuery(&params); err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.HandleValidationError(err))
+		return
+	}
+
+	if params.Limit == 0 {
+		params.Limit = 1
+	}
+
+	if params.Email == "" {
+		params.Email = "No Email"
+	}
+
+	if params.Date == "" {
+		params.Date = time.Now().Format("2006-01-02")
+	}
+
 	ctx.JSON(http.StatusOK, gin.H{
-		"message": "List all products (v1)",
-		"limit":   limit,
+		"message": "Get Product (v1)",
+		"search":  params.Search,
+		"limit":   params.Limit,
+		"email":   params.Email,
+		"date":    params.Date,
 	})
+	// limit := ctx.DefaultQuery("limit", "10")
+	// ctx.JSON(http.StatusOK, gin.H{
+	// 	"message": "List all products (v1)",
+	// 	"limit":   limit,
+	// })
 }
 
 func (p *ProductHandler) GetProductsBySlugV1(ctx *gin.Context) {
-	slug := ctx.Param("slug")
 
-	if err := utils.ValidationRegex("Product", slug, slugRegex, "must contain only lowercase letters, numbers, hyphens and dots"); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	var params GetProductsBySlugV1Param
+	if err := ctx.ShouldBindUri(&params); err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.HandleValidationError(err))
 		return
 	}
 
 	ctx.JSON(http.StatusOK, gin.H{
 		"message": "Get Product By Slug (v1)",
-		"slug":    slug,
+		"slug":    params.Slug,
 	})
+
+	// slug := ctx.Param("slug")
+
+	// if err := utils.ValidationRegex("Product", slug, slugRegex, "must contain only lowercase letters, numbers, hyphens and dots"); err != nil {
+	// 	ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	// 	return
+	// }
+
+	// ctx.JSON(http.StatusOK, gin.H{
+	// 	"message": "Get Product By Slug (v1)",
+	// 	"slug":    slug,
+	// })
 }
 
 func (p *ProductHandler) PostProductsV1(ctx *gin.Context) {

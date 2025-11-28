@@ -4,10 +4,15 @@ import (
 	"github.com/gin-gonic/gin"
 	v1handler "mamba.com/route-group/internal/api/v1/handler"
 	v2handler "mamba.com/route-group/internal/api/v2/handler"
+	"mamba.com/route-group/utils"
 )
 
 func main() {
 	r := gin.Default()
+
+	if err := utils.RegisterValidators(); err != nil {
+		panic(err)
+	}
 
 	v1 := r.Group("/api/v1")
 	{
