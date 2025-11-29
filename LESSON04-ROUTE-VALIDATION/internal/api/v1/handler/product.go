@@ -23,6 +23,18 @@ type GetProductsV1Param struct {
 	Date   string `form:"date" binding:"omitempty,datetime=2006-01-02"`
 }
 
+type ProductImage struct {
+	ImageName string `json:"image_name" binding:"required"`
+	ImageLink string `json:"image_link" binding:"required"`
+}
+
+type PostProductsV1Param struct {
+	Name         string       `json:"name" binding:"required,min=3,max=100"`
+	Price        int          `json:"price" binding:"required,min=100000"`
+	Display      bool         `json:"display" binding:"omitempty"`
+	ProductImage ProductImage `json:"product_image" binding:"required"`
+}
+
 var (
 	slugRegex   = regexp.MustCompile(`^[a-z0-9]+(?:[-.][a-z0-9]+)*$`)
 	searchRegex = regexp.MustCompile(`^[a-zA-Z0-9\s]+$`)
@@ -94,7 +106,30 @@ func (p *ProductHandler) GetProductsBySlugV1(ctx *gin.Context) {
 }
 
 func (p *ProductHandler) PostProductsV1(ctx *gin.Context) {
-	ctx.JSON(http.StatusCreated, gin.H{"message": "Create Product (v1)"})
+
+	var params PostProductsV1Param
+	if err := ctx.ShouldBindJSON(&params); err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.HandleValidationError(err))
+		return
+	}
+
+	ctx.JSON(http.StatusCreated, gin.H{
+		"message":       "Create Product (v1)",
+		"name":          params.Name,
+		"price":         params.Price,
+		"display":       params.Display,
+		"product_image": params.ProductImage,
+	})
+
+	// body, err := ctx.GetRawData()
+	// if err != nil {
+	// 	ctx.JSON(http.StatusBadRequest, "Error read body request")
+	// }
+
+	// ctx.JSON(http.StatusCreated, gin.H{
+	// 	"message": "Create Product (v1)",
+	// 	"data":    string(body),
+	// })
 }
 
 func (p *ProductHandler) PutProductsByIdV1(ctx *gin.Context) {
