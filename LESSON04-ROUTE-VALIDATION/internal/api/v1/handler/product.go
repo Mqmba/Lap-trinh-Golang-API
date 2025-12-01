@@ -1,11 +1,13 @@
 package v1handler
 
 import (
+	"fmt"
 	"net/http"
 	"regexp"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"mamba.com/route-group/utils"
 )
 
@@ -28,11 +30,25 @@ type ProductImage struct {
 	ImageLink string `json:"image_link" binding:"required,file_ext=jpg png gif"`
 }
 
+type ProductAttribute struct {
+	AttributeName  string `json:"attribute_name" binding:"required"`
+	AttributeValue string `json:"attribute_value" binding:"required"`
+}
+
+type ProductInfo struct {
+	InfoKey   string `json:"info_key" binding:"required"`
+	InfoValue string `json:"info_value" binding:"required"`
+}
+
 type PostProductsV1Param struct {
-	Name         string       `json:"name" binding:"required,min=3,max=100"`
-	Price        int          `json:"price" binding:"required,min_int=100000"`
-	Display      *bool        `json:"display" binding:"omitempty"`
-	ProductImage ProductImage `json:"product_image" binding:"required"`
+	Name             string                 `json:"name" binding:"required,min=3,max=100"`
+	Price            int                    `json:"price" binding:"required,min_int=100000"`
+	Display          *bool                  `json:"display" binding:"omitempty"`
+	ProductImage     ProductImage           `json:"product_image" binding:"required"`
+	Tag              []string               `json:"tags" binding:"required,gt=3,lt=5"`
+	ProductAttribute []ProductAttribute     `json:"product_attribute" binding:"required,gt=0,dive"`
+	ProductInfo      map[string]ProductInfo `json:"product_info" binding:"required,gt=0,dive"`
+	ProductMetadata  map[string]any         `json:"product_metadata" binding:"omitempty"`
 }
 
 var (
@@ -113,17 +129,32 @@ func (p *ProductHandler) PostProductsV1(ctx *gin.Context) {
 		return
 	}
 
+	for key := range params.ProductInfo {
+		if _, err := uuid.Parse(key); err != nil {
+			ctx.JSON(http.StatusBadRequest, gin.H{
+				"error": gin.H{
+					"product_info": fmt.Sprintf("Key '%s' trong product_info không phải là UUID hợp lệ", key),
+				},
+			})
+			return
+		}
+	}
+
 	if params.Display == nil {
 		defaultDisplay := true
 		params.Display = &defaultDisplay
 	}
 
 	ctx.JSON(http.StatusCreated, gin.H{
-		"message":       "Create Product (v1)",
-		"name":          params.Name,
-		"price":         params.Price,
-		"display":       params.Display,
-		"product_image": params.ProductImage,
+		"message":           "Create Product (v1)",
+		"name":              params.Name,
+		"price":             params.Price,
+		"display":           params.Display,
+		"product_image":     params.ProductImage,
+		"tag":               params.Tag,
+		"product_attribute": params.ProductAttribute,
+		"product_info":      params.ProductInfo,
+		"product_metadata":  params.ProductMetadata,
 	})
 
 	// body, err := ctx.GetRawData()

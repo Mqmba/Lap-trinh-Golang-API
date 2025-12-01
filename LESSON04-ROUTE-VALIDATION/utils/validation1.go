@@ -17,41 +17,61 @@ func HandleValidationError(err error) gin.H {
 		err := make(map[string]string)
 
 		for _, e := range validationError {
+			// log.Printf("%s", e.Namespace())
+			root := strings.Split(e.Namespace(), ".")[0]
+
+			rawPath := strings.TrimPrefix(e.Namespace(), root+".")
+
+			parts := strings.Split(rawPath, ".")
+
+			for i, part := range parts {
+				if strings.Contains("part", "[") {
+					idx := strings.Index(part, "[")
+					base := camelToSnake(part[:idx]) // => 0 đến trước [
+					index := part[idx:]
+					parts[i] = base + index
+				} else {
+					parts[i] = camelToSnake(part)
+				}
+			}
+
+			fieldPart := strings.Join(parts, ".")
+
 			switch e.Tag() {
 			case "gt":
-				err[e.Field()] = e.Field() + " phải lớn hơn giá trị tối thiểu"
+				err[fieldPart] = fmt.Sprintf("%s phải lớn hơn %s", fieldPart, e.Param())
 			case "lt":
-				err[e.Field()] = e.Field() + " phải nhỏ hơn giá trị tối đa"
+				err[fieldPart] = fmt.Sprintf("%s phải nhỏ hơn %s", fieldPart, e.Param())
 			case "gte":
-				err[e.Field()] = e.Field() + " phải lớn hơn hoặc bằng giá trị tối thiểu"
+				err[fieldPart] = fmt.Sprintf("%s phải lớn hơn hoặc bằng %s", fieldPart, e.Param())
 			case "lte":
-				err[e.Field()] = e.Field() + " phải nhỏ hơn hoặc bằng giá trị tối đa"
+				err[fieldPart] = fmt.Sprintf("%s phải nhỏ hơn hoặc bằng %s", fieldPart, e.Param())
 			case "uuid":
-				err[e.Field()] = e.Field() + " phải là UUID hợp lệ"
+				err[fieldPart] = fmt.Sprintf("%s phải là UUID hợp lệ", fieldPart)
 			case "slug":
-				err[e.Field()] = e.Field() + " chỉ được chứa chữ thường, số, dấu gạch ngang hoặc dấu chấm"
+				err[fieldPart] = fmt.Sprintf("%s chỉ được chứa chữ thường, số, dấu gạch ngang hoặc dấu chấm", fieldPart)
 			case "min":
-				err[e.Field()] = fmt.Sprintf("%s phải nhiều hơn %s kí tự", e.Field(), e.Param())
+				err[fieldPart] = fmt.Sprintf("%s phải nhiều hơn %s kí tự", fieldPart, e.Param())
 			case "max":
-				err[e.Field()] = fmt.Sprintf("%s phải ít hơn %s kí tự", e.Field(), e.Param())
+				err[fieldPart] = fmt.Sprintf("%s phải ít hơn %s kí tự", fieldPart, e.Param())
 			case "min_int":
-				err[e.Field()] = fmt.Sprintf("%s phải có giá trị lớn hơn %s", e.Field(), e.Param())
+				err[fieldPart] = fmt.Sprintf("%s phải có giá trị lớn hơn %s", fieldPart, e.Param())
 			case "max_int":
-				err[e.Field()] = fmt.Sprintf("%s phải có giá trị nhỏ hơn %s", e.Field(), e.Param())
+				err[fieldPart] = fmt.Sprintf("%s phải có giá trị nhỏ hơn %s", fieldPart, e.Param())
 			case "oneof":
 				allowedValues := strings.Join(strings.Split(e.Param(), " "), ", ")
-				err[e.Field()] = fmt.Sprintf("%s phải là một trong các giá trị: %s", e.Field(), allowedValues)
+				err[fieldPart] = fmt.Sprintf("%s phải là một trong các giá trị: %s", fieldPart, allowedValues)
 			case "required":
-				err[e.Field()] = e.Field() + " là bắt buộc"
+				err[fieldPart] = fmt.Sprintf("%s là bắt buộc", fieldPart)
 			case "search":
-				err[e.Field()] = e.Field() + " chỉ được chứa chữ thường, in hoa, số và khoảng trắng"
+				err[fieldPart] = fmt.Sprintf("%s chỉ được chứa chữ thường, in hoa, số và khoảng trắng", fieldPart)
 			case "email":
-				err[e.Field()] = e.Field() + " phải đúng định dạng là email"
+				err[fieldPart] = fmt.Sprintf("%s phải đúng định dạng là email", fieldPart)
 			case "datetime":
-				err[e.Field()] = e.Field() + " phải đúng định dạng YYYY-MM-DD"
+				err[fieldPart] = fmt.Sprintf("%s phải đúng định dạng YYYY-MM-DD", fieldPart)
 			case "file_ext":
 				allowedValues := strings.Join(strings.Split(e.Param(), " "), ", ")
-				err[e.Field()] = fmt.Sprintf("%s chỉ cho phép file có extension: %s", e.Field(), allowedValues)
+				err[fieldPart] = fmt.Sprintf("%s chỉ cho phép file có extension: %s", fieldPart, allowedValues)
 			}
 		}
 		return gin.H{"error": err}
