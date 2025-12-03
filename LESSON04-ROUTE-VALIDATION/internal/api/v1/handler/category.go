@@ -14,6 +14,11 @@ type GetCategoryByCategoryV1Param struct {
 	Category string `uri:"category" binding:"oneof=php python golang"`
 }
 
+type PostCategoriesV1Param struct {
+	Name   string `form:"name" binding:"required"`
+	Status string `form:"status" binding:"required,oneof=1 2"`
+}
+
 var validCategory = map[string]bool{
 	"php":    true,
 	"python": true,
@@ -46,4 +51,18 @@ func (c *CategoryHandler) GetCategoryByCategoryV1(ctx *gin.Context) {
 	// 	"message":  "Category found",
 	// 	"category": category,
 	// })
+}
+
+func (c *CategoryHandler) PostCategoriesV1(ctx *gin.Context) {
+	var param PostCategoriesV1Param
+	if err := ctx.ShouldBind(&param); err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.HandleValidationError(err))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"message": "Post category (V1)",
+		"name":    param.Name,
+		"status":  param.Status,
+	})
 }
