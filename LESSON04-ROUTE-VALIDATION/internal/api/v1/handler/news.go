@@ -46,12 +46,22 @@ func (n *NewsHandler) PostNewsV1(ctx *gin.Context) {
 		return
 	}
 
+	// Lấy thông tin file
 	image, err := ctx.FormFile("image")
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "File is required"})
 		return
 	}
 
+	// Yêu cầu giới hạn file nhỏ hơn 5MB
+	// 1 << 20 = 2^20 = 1048576 = 1MB
+	// 5 << 20 = 5 * 2^20 = 5 * 1048576 = 5MB
+	if image.Size > 5<<20 {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "File is too large (5 MB)"})
+		return
+	}
+
+	// Tạo Folder
 	// os.ModePerm = 0777 (octal)
 	// Có nghĩa : đọc, ghi, thực thi (read, write, execute) cho tất cả mọi người (owner, group, others)
 	err = os.MkdirAll("./uploads", os.ModePerm)
@@ -73,4 +83,34 @@ func (n *NewsHandler) PostNewsV1(ctx *gin.Context) {
 		"image":   image.Filename,
 		"path":    dst,
 	})
+}
+
+func (n *NewsHandler) PostUploadFileNewsV1(ctx *gin.Context) {
+	var params PostNewsV1Param
+	if err := ctx.ShouldBind(&params); err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.HandleValidationError(err))
+		return
+	}
+
+	// Lấy thông tin file
+	image, err := ctx.FormFile("image")
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "File is required"})
+		return
+	}
+
+	filename, err := utils.ValidateAndSaveFile(image, "./uploads")
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"message": "Post news (V1)",
+		"title":   params.Title,
+		"status":  params.Status,
+		"image":   filename,
+		"path":    "./upload/" + filename,
+	})
+
 }
