@@ -112,5 +112,55 @@ func (n *NewsHandler) PostUploadFileNewsV1(ctx *gin.Context) {
 		"image":   filename,
 		"path":    "./upload/" + filename,
 	})
+}
 
+// Upload nhiều hình và hiển thị lỗi nếu File ảnh ko hợp lệ
+func (n *NewsHandler) PostUploadMultipleFileNewsV1(ctx *gin.Context) {
+	var params PostNewsV1Param
+	if err := ctx.ShouldBind(&params); err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.HandleValidationError(err))
+		return
+	}
+
+	form, err := ctx.MultipartForm()
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid multipart form"})
+		return
+	}
+
+	images := form.File["images"]
+	if len(images) == 0 {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "No file provided"})
+		return
+	}
+
+	// Báo lỗi khi file hình ảnh ko hợp lệ
+	var successFiles []string
+	var failedFile []map[string]string
+	for _, image := range images {
+		filename, err := utils.ValidateAndSaveFile(image, "./uploads")
+		if err != nil {
+			failedFile = append(failedFile, map[string]string{
+				"filename": filename,
+				"error":    err.Error(),
+			})
+			continue
+		}
+
+		successFiles = append(successFiles, filename)
+	}
+
+	resp := gin.H{
+		"message":       "Post news (V1)",
+		"title":         params.Title,
+		"status":        params.Status,
+		"success_files": successFiles,
+	}
+
+	if len(failedFile) > 0 {
+		resp["message"] = "Upload completed with partial errors"
+		resp["error_files"] = failedFile
+	}
+
+	ctx.JSON(http.StatusOK, resp)
 }
