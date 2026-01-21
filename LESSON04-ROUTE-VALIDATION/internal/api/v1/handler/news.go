@@ -116,6 +116,8 @@ func (n *NewsHandler) PostUploadFileNewsV1(ctx *gin.Context) {
 
 // Upload nhiều hình và hiển thị lỗi nếu File ảnh ko hợp lệ
 func (n *NewsHandler) PostUploadMultipleFileNewsV1(ctx *gin.Context) {
+
+	const publicURL = "http://localhost:8080/images/"
 	var params PostNewsV1Param
 	if err := ctx.ShouldBind(&params); err != nil {
 		ctx.JSON(http.StatusBadRequest, utils.HandleValidationError(err))
@@ -147,7 +149,8 @@ func (n *NewsHandler) PostUploadMultipleFileNewsV1(ctx *gin.Context) {
 			continue
 		}
 
-		successFiles = append(successFiles, filename)
+		publicImageURL := publicURL + filename
+		successFiles = append(successFiles, publicImageURL)
 	}
 
 	resp := gin.H{

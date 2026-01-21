@@ -1,6 +1,7 @@
 package v1handler
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -11,7 +12,7 @@ type CategoryHandler struct {
 }
 
 type GetCategoryByCategoryV1Param struct {
-	Category string `uri:"category" binding:"oneof=php python golang"`
+	Category string `uri:"category" binding:"oneof=php python golang java"`
 }
 
 type PostCategoriesV1Param struct {
@@ -36,8 +37,10 @@ func (c *CategoryHandler) GetCategoryByCategoryV1(ctx *gin.Context) {
 		return
 	}
 
+	log.Println("Into GetCategoryByCategoryV1")
+
 	ctx.JSON(http.StatusOK, gin.H{
-		"message":  "Category found",
+		"message":  "Get category by category (V1)",
 		"category": params.Category,
 	})
 	// category := ctx.Param("category")
