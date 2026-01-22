@@ -2,7 +2,10 @@ module mamba.com/route-group
 
 go 1.25.4
 
-require github.com/gin-gonic/gin v1.11.0
+require (
+	github.com/gin-gonic/gin v1.11.0
+	golang.org/x/time v0.14.0
+)
 
 require (
 	github.com/bytedance/sonic v1.14.0 // indirect
