@@ -26,7 +26,7 @@ func main() {
 
 	go middleware.CleanupClients()
 
-	r.Use(middleware.ApiKeyMiddleware(), middleware.RateLimitingMiddleware())
+	r.Use(middleware.LoggerMiddleware(), middleware.ApiKeyMiddleware(), middleware.RateLimitingMiddleware())
 
 	v1 := r.Group("/api/v1")
 	{
@@ -89,3 +89,7 @@ func main() {
 
 	r.Run(":8080")
 }
+
+// Zerolog lưu lại log dưới dạng JSON kèm theo timestamp
+// Lưu lại các thông tin như method, path, querry,... trong log
+// Sắp xếp các middleware cho phù hợp Logger -> API -> Ratelimit
