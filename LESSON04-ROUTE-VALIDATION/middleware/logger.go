@@ -1,8 +1,14 @@
 package middleware
 
 import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -28,6 +34,62 @@ func LoggerMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 
 		start := time.Now()
+		contentType := ctx.GetHeader("Content-Type")
+		requestBody := make(map[string]any)
+		var formFiles []map[string]any
+
+		// Content-Type : multipart/form-data
+		if strings.HasPrefix(contentType, "multipart/form-data") {
+			if err := ctx.Request.ParseMultipartForm(32 << 20); err == nil && ctx.Request.MultipartForm != nil {
+				// For value
+				for key, vals := range ctx.Request.MultipartForm.Value {
+					if len(vals) == 1 {
+						requestBody[key] = vals[0]
+					} else {
+						requestBody[key] = vals
+					}
+				}
+
+				// For file
+				for field, files := range ctx.Request.MultipartForm.File {
+					for _, f := range files {
+						formFiles = append(formFiles, map[string]any{
+							"field":        field,
+							"filename":     f.Filename,
+							"size":         formatFileSize(f.Size),
+							"content_type": f.Header.Get("Content-Type"),
+						})
+					}
+				}
+				if len(formFiles) > 0 {
+					requestBody["form-files"] = formFiles
+				}
+			}
+		} else {
+			// Content-Type : application/x-www-form-urlencoded
+			// Content-Type : application/json
+			bodyBytes, err := io.ReadAll(ctx.Request.Body)
+			if err != nil {
+				logger.Error().Err(err).Msg("Failed to read request body")
+			}
+
+			ctx.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+
+			if strings.HasPrefix(contentType, "application/json") {
+				// Content-Type : application/json
+				_ = json.Unmarshal(bodyBytes, &requestBody)
+			} else {
+				// Content-Type : application/x-www-form-urlencoded
+				values, _ := url.ParseQuery(string(bodyBytes))
+				for key, vals := range values {
+					if len(vals) == 1 {
+						requestBody[key] = vals[0]
+					} else {
+						requestBody[key] = vals
+					}
+				}
+			}
+		}
 
 		ctx.Next()
 
@@ -55,8 +117,20 @@ func LoggerMiddleware() gin.HandlerFunc {
 			Str("request_uri", ctx.Request.RequestURI).
 			Int64("content_length", ctx.Request.ContentLength).
 			Interface("headers", ctx.Request.Header).
+			Interface("request_body", requestBody).
 			Int("status_code", statusCode).
 			Int64("duration", duration.Milliseconds()).
 			Msg("Http Request Log")
+	}
+}
+
+func formatFileSize(size int64) string {
+	switch {
+	case size >= 1<<20:
+		return fmt.Sprintf("%.2f MB", float64(size)/(1<<20))
+	case size >= 1<<10:
+		return fmt.Sprintf("%.2f KB", float64(size)/(1<<10))
+	default:
+		return fmt.Sprintf("%d B", size)
 	}
 }
